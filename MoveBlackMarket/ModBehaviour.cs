@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
+using System.Reflection;
 using UnityEngine;
-using UnityEngine.Playables;
 
 namespace MoveBlackMarket
 {
@@ -54,18 +54,25 @@ namespace MoveBlackMarket
                             UnityEngine.Object.Destroy(_savedMerchant);
 
                         var clone = UnityEngine.Object.Instantiate(child.gameObject);
-                        clone.name = "Merchant(Clone_Copy)";
+                        clone.name = "黑市商人的兄弟";
                         clone.transform.SetParent(null, true);
                         clone.SetActive(false);
 
                         // 禁用特定子物体，避免跨场景报错
                         var aiChild = clone.transform.Find("AIController_Merchant_Myst(Clone)");
                         if (aiChild != null)
+                        {
+                            var aiCharacterController = aiChild.GetComponent<AICharacterController>();
+                            var fieldInfo = typeof(AICharacterController).GetField("characterMainControl",
+                                BindingFlags.NonPublic | BindingFlags.Instance);
+                            fieldInfo?.SetValue(aiCharacterController, LevelManager.Instance.MainCharacter);
                             aiChild.gameObject.SetActive(false);
+                        }
+
 
                         UnityEngine.Object.DontDestroyOnLoad(clone);
                         _savedMerchant = clone;
-
+                        LevelManager.Instance.MainCharacter.PopText("商人的兄弟已请到基地");
                         Debug.Log("✅ 已克隆并保存商人对象（DontDestroyOnLoad生效）");
                         break;
                     }
@@ -80,6 +87,7 @@ namespace MoveBlackMarket
                 if (child.name.StartsWith("SpecialAttachment_Merchant_"))
                     return true;
             }
+
             return false;
         }
 
@@ -103,13 +111,6 @@ namespace MoveBlackMarket
             // 挂载到 Base
             _savedMerchant.transform.SetParent(baseRoot.transform, true);
             _savedMerchant.transform.position = new Vector3(7, 0, -51);
-
-            // 启用 Movement / CharacterMainControl 保持转向逻辑
-            foreach (var comp in _savedMerchant.GetComponents<MonoBehaviour>())
-            {
-                if (comp != null && (comp is Movement || comp is CharacterMainControl))
-                    comp.enabled = true;
-            }
 
             _savedMerchant.SetActive(true);
             Debug.Log($"✅ 商人已挂载到 {baseRoot.name} 并激活");
