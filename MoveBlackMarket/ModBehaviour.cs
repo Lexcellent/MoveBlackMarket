@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace MoveBlackMarket
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private static GameObject? _savedMerchant; // 保存克隆的商人
+        private static GameObject? _savedZeroMerchant; // 克隆的零号区商人
+        private static GameObject? _savedFarmMerchant; // 克隆的农场商人
 
         protected override void OnAfterSetup()
         {
@@ -18,7 +19,16 @@ namespace MoveBlackMarket
 
         protected override void OnBeforeDeactivate()
         {
-            Destroy(_savedMerchant);
+            if (_savedZeroMerchant != null)
+            {
+                Destroy(_savedZeroMerchant);
+            }
+
+            if (_savedFarmMerchant != null)
+            {
+                Destroy(_savedFarmMerchant);
+            }
+
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInit;
             SceneLoader.onStartedLoadingScene -= OnStartedLoadingScene;
         }
@@ -27,34 +37,54 @@ namespace MoveBlackMarket
         {
             Debug.Log($"场景加载完成: {context.sceneName}");
 
-            if (context.sceneName == "Level_GroundZero_Main" && _savedMerchant == null)
-                StartCoroutine(FindAndCloneMerchant());
+            if (context.sceneName == "Level_GroundZero_Main" && _savedZeroMerchant == null)
+                StartCoroutine(FindAndCloneMerchant("MultiSceneCore/Level_GroundZero_1",
+                    clone => _savedZeroMerchant = clone));
+            if (context.sceneName == "Level_Farm_Main" && _savedFarmMerchant == null)
+                StartCoroutine(FindAndCloneMerchant("MultiSceneCore/Level_Farm_01/",
+                    clone => _savedFarmMerchant = clone));
             else if (context.sceneName == "Base")
-                StartCoroutine(AttachMerchantToBase());
+            {
+                StartCoroutine(AttachMerchantToBase(_savedZeroMerchant, new Vector3(7, 0, -51),
+                    new Vector3(7, 0, -54)));
+                StartCoroutine(AttachMerchantToBase(_savedFarmMerchant, new Vector3(8, 0, -51),
+                    new Vector3(8, 0, -54)));
+            }
         }
 
         void OnStartedLoadingScene(SceneLoadingContext context)
         {
             Debug.Log($"开始加载场景: {context.sceneName}");
-            if (context.sceneName != "Base" && _savedMerchant != null)
-                _savedMerchant.SetActive(false);
+            if (context.sceneName != "Base")
+            {
+                _savedZeroMerchant?.SetActive(false);
+                _savedFarmMerchant?.SetActive(false);
+            }
         }
 
         void OnBeforeMerchantDead(DamageInfo damage)
         {
-            Destroy(_savedMerchant);
+            if (_savedZeroMerchant != null)
+            {
+                Destroy(_savedZeroMerchant);
+            }
+
+            if (_savedFarmMerchant != null)
+            {
+                Destroy(_savedFarmMerchant);
+            }
         }
 
-        IEnumerator FindAndCloneMerchant()
+        IEnumerator FindAndCloneMerchant(string rootPath, System.Action<GameObject> onCloned)
         {
             Debug.Log("延迟5秒等待场景生成...");
             yield return new WaitForSeconds(5f);
 
-            var root = GameObject.Find("MultiSceneCore/Level_GroundZero_1");
+            var root = GameObject.Find(rootPath);
             if (root == null)
             {
-                Debug.LogWarning("未找到根节点 MultiSceneCore/Level_GroundZero_1，打印所有根节点:");
-                foreach (var go in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
+                Debug.LogWarning($"未找到根节点 {rootPath}，打印所有根节点:");
+                foreach (var go in SceneManager.GetActiveScene().GetRootGameObjects())
                 {
                     Debug.Log("Root: " + go.name);
                 }
@@ -64,7 +94,6 @@ namespace MoveBlackMarket
 
             Debug.Log("找到根节点: " + root.name);
 
-            bool foundMerchant = false;
             foreach (Transform child in root.transform)
             {
                 Debug.Log("遍历子对象: " + child.name);
@@ -81,9 +110,6 @@ namespace MoveBlackMarket
                     if (ctrl != null && ctrl.Team == Teams.all && HasSpecialMerchantChild(child))
                     {
                         Debug.Log($"✅ 找到商人: {child.name} @ {child.position}");
-
-                        if (_savedMerchant != null)
-                            Destroy(_savedMerchant);
 
                         var clone = Instantiate(child.gameObject);
                         clone.name = "黑市商人的兄弟";
@@ -102,24 +128,16 @@ namespace MoveBlackMarket
                             Debug.LogWarning("❌ 未找到 AIController_Merchant_Myst(Clone)");
                         }
 
-                        _savedMerchant = clone;
-                        DontDestroyOnLoad(_savedMerchant);
+                        DontDestroyOnLoad(clone);
                         Debug.Log("✅ 已克隆并保存商人对象（DontDestroyOnLoad生效）");
-
-                        foundMerchant = true;
-                        break;
+                        LevelManager.Instance.MainCharacter.PopText("本地图黑市商人的兄弟已被请回基地");
+                        onCloned?.Invoke(clone);
+                        yield break;
                     }
                 }
             }
 
-            if (!foundMerchant)
-            {
-                Debug.LogWarning("❌ 没有找到符合条件的商人对象");
-            }
-            else
-            {
-                LevelManager.Instance.MainCharacter.PopText("商人的兄弟已被请回基地");
-            }
+            Debug.LogWarning("❌ 没有找到符合条件的商人对象");
         }
 
 
@@ -134,11 +152,11 @@ namespace MoveBlackMarket
             return false;
         }
 
-        IEnumerator AttachMerchantToBase()
+        IEnumerator AttachMerchantToBase(GameObject? savedMerchant, Vector3 position, Vector3 faceTo)
         {
             yield return new WaitForSeconds(1f);
 
-            if (_savedMerchant == null)
+            if (savedMerchant == null)
             {
                 Debug.LogWarning("❌ 没有保存的商人对象");
                 yield break;
@@ -153,22 +171,22 @@ namespace MoveBlackMarket
 
             //// 挂载到 Base
             // _savedMerchant.transform.SetParent(baseRoot.transform, true);
-            _savedMerchant.transform.SetParent(null, true);
-            _savedMerchant.transform.position = new Vector3(7, 0, -51);
+            savedMerchant.transform.SetParent(null, true);
+            savedMerchant.transform.position = position;
 
             // 设置商人朝向
-            var modelRoot = _savedMerchant.transform.Find("ModelRoot");
+            var modelRoot = savedMerchant.transform.Find("ModelRoot");
             if (modelRoot != null)
             {
-                modelRoot.LookAt(new Vector3(7, 0, -54));
-                Debug.Log("✅ 商人朝向已设置: ModelRoot.LookAt(7,0,-54)");
+                modelRoot.LookAt(faceTo);
+                Debug.Log($"✅ 商人朝向已设置: {faceTo}");
             }
             else
             {
                 Debug.LogWarning("❌ 未找到 ModelRoot，无法设置朝向");
             }
 
-            _savedMerchant.SetActive(true);
+            savedMerchant.SetActive(true);
             Debug.Log($"✅ 商人已激活");
         }
     }
