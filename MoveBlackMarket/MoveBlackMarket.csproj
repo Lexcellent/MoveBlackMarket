@@ -12,6 +12,7 @@
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*"/>
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\NodeCanvas.dll"/>
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ParadoxNotion.dll"/>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\UniTask*.dll"/>
     </ItemGroup>
 <!--    <ItemGroup>-->
 <!--        <PackageReference Include="Lib.Harmony" Version="2.4.1"/>-->

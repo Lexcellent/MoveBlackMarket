@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections;
+using System.Reflection;
+using Duckov.Economy;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -76,7 +78,7 @@ namespace MoveBlackMarket
             }
         }
 
-        IEnumerator FindAndCloneMerchant(string rootPath, System.Action<GameObject> onCloned)
+        IEnumerator FindAndCloneMerchant(string rootPath, Action<GameObject> onCloned)
         {
             Debug.Log("延迟5秒等待场景生成...");
             yield return new WaitForSeconds(5f);
@@ -93,11 +95,11 @@ namespace MoveBlackMarket
                 yield break;
             }
 
-            Debug.Log("找到根节点: " + root.name);
+            // Debug.Log("找到根节点: " + root.name);
 
             foreach (Transform child in root.transform)
             {
-                Debug.Log("遍历子对象: " + child.name);
+                // Debug.Log("遍历子对象: " + child.name);
                 if (child.name == "Character(Clone)")
                 {
                     var ctrl = child.GetComponent<CharacterMainControl>();
@@ -182,7 +184,7 @@ namespace MoveBlackMarket
                 Debug.Log($"✅ 商人朝向已设置: {faceTo}");
             }
 
-            // 方法1：直接监听 DamageReceiver 的 OnDeadEvent
+            // 直接监听 DamageReceiver 的 OnDeadEvent
             var damageReceiver = cloneMerchant.GetComponentInChildren<DamageReceiver>();
             if (damageReceiver != null)
             {
@@ -191,7 +193,6 @@ namespace MoveBlackMarket
                     Debug.Log($"🔄 商人死亡，准备复活: {cloneMerchant.name}");
                     // 延迟复活
                     StartCoroutine(RespawnMerchantAfterDeath(savedMerchant, position, faceTo, 1f));
-
                 });
                 Debug.Log("✅ 已绑定商人死亡监听事件");
             }
@@ -200,8 +201,87 @@ namespace MoveBlackMarket
                 Debug.LogWarning("❌ 未找到 DamageReceiver 组件");
             }
 
+            
             cloneMerchant.SetActive(true);
             Debug.Log($"✅ 商人已激活");
+            // 刷新商店物品
+            var find = cloneMerchant.transform.Find("SpecialAttachment_Merchant_Myst0(Clone)");
+            if (find != null)
+            {
+                var stockShop = find.GetComponent<StockShop>();
+                if (stockShop != null)
+                {
+                    Debug.Log($"🔍 尝试刷新商人商店库存...");
+                    // // 使用反射调用 InitializeEntries 方法
+                    // var initializeEntriesMethod = typeof(StockShop).GetMethod("InitializeEntries",
+                    //     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    // if (initializeEntriesMethod != null)
+                    // {
+                    //     try
+                    //     {
+                    //         initializeEntriesMethod.Invoke(stockShop, null);
+                    //         Debug.Log($"✅ 成功调用 InitializeEntries 方法，商店库存已刷新");
+                    //     }
+                    //     catch (Exception ex)
+                    //     {
+                    //         Debug.LogError($"❌ 调用 InitializeEntries 方法时发生异常: {ex.Message}");
+                    //     }
+                    // }
+                    // else
+                    // {
+                    //     Debug.LogWarning("⚠️ 未找到 InitializeEntries 方法");
+                    // }
+
+                    // 使用反射调用 DoRefreshStock 方法
+                    var refreshMethod = typeof(StockShop).GetMethod("DoRefreshStock",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (refreshMethod != null)
+                    {
+                        try
+                        {
+                            refreshMethod.Invoke(stockShop, null);
+                            Debug.Log($"✅ 成功调用 DoRefreshStock 方法，商店库存已刷新");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError($"❌ 调用 DoRefreshStock 方法时发生异常: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("⚠️ 未找到 DoRefreshStock 方法");
+                    }
+
+                    // 使用反射设置 lastTimeRefreshedStock 字段
+                    var lastTimeField = typeof(StockShop).GetField("lastTimeRefreshedStock",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (lastTimeField != null)
+                    {
+                        try
+                        {
+                            lastTimeField.SetValue(stockShop, DateTime.UtcNow.ToBinary());
+                            Debug.Log($"✅ 成功更新 lastTimeRefreshedStock 时间戳");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError($"❌ 设置 lastTimeRefreshedStock 字段时发生异常: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("⚠️ 未找到 lastTimeRefreshedStock 字段");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ SpecialAttachment_Merchant_Myst0(Clone) 上未找到 StockShop 组件");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ 未找到 SpecialAttachment_Merchant_Myst0(Clone) 对象");
+            }
+
         }
 
         // 商人复活协程
