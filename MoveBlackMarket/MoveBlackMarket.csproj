@@ -10,6 +10,8 @@
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\TeamSoda.*"/>
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ItemStatsSystem.dll"/>
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*"/>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\NodeCanvas.dll"/>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ParadoxNotion.dll"/>
     </ItemGroup>
 <!--    <ItemGroup>-->
 <!--        <PackageReference Include="Lib.Harmony" Version="2.4.1"/>-->
