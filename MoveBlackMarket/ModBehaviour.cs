@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -103,8 +104,6 @@ namespace MoveBlackMarket
                     if (ctrl != null)
                     {
                         Debug.Log($"CharacterMainControl.Team = {ctrl.Team}");
-                        ctrl.BeforeCharacterSpawnLootOnDead -= OnBeforeMerchantDead;
-                        ctrl.BeforeCharacterSpawnLootOnDead += OnBeforeMerchantDead;
                     }
 
                     if (ctrl != null && ctrl.Team == Teams.all && HasSpecialMerchantChild(child))
@@ -152,9 +151,10 @@ namespace MoveBlackMarket
             return false;
         }
 
-        IEnumerator AttachMerchantToBase(GameObject? savedMerchant, Vector3 position, Vector3 faceTo)
+        IEnumerator AttachMerchantToBase(GameObject? savedMerchant, Vector3 position, Vector3 faceTo,
+            float waitfor = 2f)
         {
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(waitfor);
 
             if (savedMerchant == null)
             {
@@ -162,32 +162,56 @@ namespace MoveBlackMarket
                 yield break;
             }
 
-            // var baseRoot = GameObject.Find("MultiSceneCore/Base");
-            // if (baseRoot == null)
-            // {
-            //     Debug.LogWarning("❌ 未找到 Base 根节点");
-            //     yield break;
-            // }
+            var cloneMerchant = Instantiate(savedMerchant);
 
-            //// 挂载到 Base
-            // _savedMerchant.transform.SetParent(baseRoot.transform, true);
-            savedMerchant.transform.SetParent(null, true);
-            savedMerchant.transform.position = position;
+            var baseRoot = GameObject.Find("MultiSceneCore/Base");
+            if (baseRoot == null)
+            {
+                Debug.LogWarning("❌ 未找到 Base 根节点");
+                yield break;
+            }
+
+            cloneMerchant.transform.SetParent(baseRoot.transform, true);
+            cloneMerchant.transform.position = position;
 
             // 设置商人朝向
-            var modelRoot = savedMerchant.transform.Find("ModelRoot");
+            var modelRoot = cloneMerchant.transform.Find("ModelRoot");
             if (modelRoot != null)
             {
                 modelRoot.LookAt(faceTo);
                 Debug.Log($"✅ 商人朝向已设置: {faceTo}");
             }
+
+            // 方法1：直接监听 DamageReceiver 的 OnDeadEvent
+            var damageReceiver = cloneMerchant.GetComponentInChildren<DamageReceiver>();
+            if (damageReceiver != null)
+            {
+                damageReceiver.OnDeadEvent.AddListener((damageInfo) =>
+                {
+                    Debug.Log($"🔄 商人死亡，准备复活: {cloneMerchant.name}");
+                    // 延迟复活
+                    StartCoroutine(RespawnMerchantAfterDeath(savedMerchant, position, faceTo, 1f));
+
+                });
+                Debug.Log("✅ 已绑定商人死亡监听事件");
+            }
             else
             {
-                Debug.LogWarning("❌ 未找到 ModelRoot，无法设置朝向");
+                Debug.LogWarning("❌ 未找到 DamageReceiver 组件");
             }
 
-            savedMerchant.SetActive(true);
+            cloneMerchant.SetActive(true);
             Debug.Log($"✅ 商人已激活");
+        }
+
+        // 商人复活协程
+        IEnumerator RespawnMerchantAfterDeath(GameObject savedMerchant, Vector3 position, Vector3 faceTo,
+            float delaySeconds)
+        {
+            Debug.Log($"⏳ 等待 {delaySeconds} 秒后复活商人...");
+            yield return new WaitForSeconds(delaySeconds);
+
+            StartCoroutine(AttachMerchantToBase(savedMerchant, position, faceTo, 0f));
         }
     }
 }
