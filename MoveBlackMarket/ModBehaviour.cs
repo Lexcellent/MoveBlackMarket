@@ -152,6 +152,16 @@ namespace MoveBlackMarket
 
             return false;
         }
+        Transform? GetSpecialMerchantChild(Transform parent)
+        {
+            foreach (Transform child in parent)
+            {
+                if (child.name.StartsWith("SpecialAttachment_Merchant_"))
+                    return child;
+            }
+
+            return null;
+        }
 
         IEnumerator AttachMerchantToBase(GameObject? savedMerchant, Vector3 position, Vector3 faceTo,
             float waitfor = 2f)
@@ -205,7 +215,7 @@ namespace MoveBlackMarket
             cloneMerchant.SetActive(true);
             Debug.Log($"✅ 商人已激活");
             // 刷新商店物品
-            var find = cloneMerchant.transform.Find("SpecialAttachment_Merchant_Myst0(Clone)");
+            var find = GetSpecialMerchantChild(cloneMerchant.transform);
             if (find != null)
             {
                 var stockShop = find.GetComponent<StockShop>();
@@ -274,12 +284,12 @@ namespace MoveBlackMarket
                 }
                 else
                 {
-                    Debug.LogWarning("⚠️ SpecialAttachment_Merchant_Myst0(Clone) 上未找到 StockShop 组件");
+                    Debug.LogWarning("⚠️ SpecialAttachment_Merchant_ 上未找到 StockShop 组件");
                 }
             }
             else
             {
-                Debug.LogWarning("⚠️ 未找到 SpecialAttachment_Merchant_Myst0(Clone) 对象");
+                Debug.LogWarning("⚠️ 未找到 SpecialAttachment_Merchant_ 对象");
             }
 
         }
