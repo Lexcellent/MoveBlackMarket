@@ -2,6 +2,9 @@
 using System.Collections;
 using System.Reflection;
 using Duckov.Economy;
+using Duckov.Scenes;
+using Duckov.UI;
+using Duckov.Utilities;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,8 +12,6 @@ namespace MoveBlackMarket
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private static GameObject? _savedZeroMerchant; // 克隆的零号区商人
-        private static GameObject? _savedFarmMerchant; // 克隆的农场商人
         private static GameObject? _savedBlueMerchantModel; // 克隆的地毯人模型
         private static GameObject? _savedBlueMerchantShop; // 克隆的地毯人交互
 
@@ -20,25 +21,12 @@ namespace MoveBlackMarket
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInit;
             SceneLoader.onAfterSceneInitialize += OnAfterSceneInit;
-            SceneLoader.onStartedLoadingScene -= OnStartedLoadingScene;
-            SceneLoader.onStartedLoadingScene += OnStartedLoadingScene;
         }
 
         protected override void OnBeforeDeactivate()
         {
-            if (_savedZeroMerchant != null)
-            {
-                Destroy(_savedZeroMerchant);
-            }
-
-            if (_savedFarmMerchant != null)
-            {
-                Destroy(_savedFarmMerchant);
-            }
-
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInit;
-            SceneLoader.onStartedLoadingScene -= OnStartedLoadingScene;
         }
 
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -57,11 +45,37 @@ namespace MoveBlackMarket
                     }));
                 }
             }
+            else if (scene.name == "Base_SceneV2")
+            {
+                CreateCharacter("EnemyPreset_Merchant_Myst", new Vector3(7, 0, -51), new Vector3(7, 0, -54));
+                CreateCharacter("EnemyPreset_Merchant_Myst0", new Vector3(8, 0, -51), new Vector3(8, 0, -54));
+                StartCoroutine(AttachBlueMerchantToBase(_savedBlueMerchantModel, _savedBlueMerchantShop,
+                    new Vector3(6, 0, -51),
+                    new Vector3(6, 0, -54)));
+            }
         }
+
+        void OnAfterSceneInit(SceneLoadingContext context)
+        {
+            // Debug.Log($"场景初始化完成：{context.sceneName}");
+            // if (context.sceneName == "Base")
+            // {
+            //     CreateCharacter("EnemyPreset_Merchant_Myst", new Vector3(7, 0, -51), new Vector3(7, 0, -54));
+            //     CreateCharacter("EnemyPreset_Merchant_Myst0", new Vector3(8, 0, -51), new Vector3(8, 0, -54));
+            //     // StartCoroutine(AttachMerchantToBase(_savedZeroMerchant, new Vector3(7, 0, -51),
+            //     //     new Vector3(7, 0, -54)));
+            //     // StartCoroutine(AttachMerchantToBase(_savedFarmMerchant, new Vector3(8, 0, -51),
+            //     //     new Vector3(8, 0, -54)));
+            //     StartCoroutine(AttachBlueMerchantToBase(_savedBlueMerchantModel, _savedBlueMerchantShop,
+            //         new Vector3(6, 0, -51),
+            //         new Vector3(6, 0, -54)));
+            // }
+        }
+
 
         IEnumerator CopyMerchantBlue(Action<GameObject, GameObject> onCloned)
         {
-            Debug.Log("延迟5秒等待场景生成...");
+            // Debug.Log("延迟5秒等待场景生成...");
             yield return new WaitForSeconds(5f);
 
             var root = GameObject.Find("ENV/Inside/Group");
@@ -84,25 +98,25 @@ namespace MoveBlackMarket
                 // Debug.Log("遍历子对象: " + child.name);
                 if (child.name == "bugboss_patro_stand_2")
                 {
-                    Debug.Log($"✅ 找到地毯人模型: {child.name} @ {child.position}");
+                    // Debug.Log($"✅ 找到地毯人模型: {child.name} @ {child.position}");
 
                     model = Instantiate(child.gameObject);
                     model.name = "地毯人模型";
                     model.transform.SetParent(null, true);
                     model.SetActive(false);
                     DontDestroyOnLoad(model);
-                    Debug.Log("✅ 已克隆并地毯人模型（DontDestroyOnLoad生效）");
+                    // Debug.Log("✅ 已克隆并地毯人模型（DontDestroyOnLoad生效）");
                 }
                 else if (child.name == "Shop")
                 {
-                    Debug.Log($"✅ 找到地毯人交互对象: {child.name} @ {child.position}");
+                    // Debug.Log($"✅ 找到地毯人交互对象: {child.name} @ {child.position}");
 
                     shop = Instantiate(child.gameObject);
                     shop.name = "地毯人商店交互";
                     shop.transform.SetParent(null, true);
                     shop.SetActive(false);
                     DontDestroyOnLoad(shop);
-                    Debug.Log("✅ 已克隆并地毯人交互对象（DontDestroyOnLoad生效）");
+                    // Debug.Log("✅ 已克隆并地毯人交互对象（DontDestroyOnLoad生效）");
                 }
 
                 if (model != null && shop != null)
@@ -120,101 +134,6 @@ namespace MoveBlackMarket
             {
                 Debug.LogWarning("❌ 没有找到地毯人");
             }
-        }
-
-        void OnAfterSceneInit(SceneLoadingContext context)
-        {
-            Debug.Log($"场景加载完成: {context.sceneName}");
-
-            if (context.sceneName == "Level_GroundZero_Main" && _savedZeroMerchant == null)
-                StartCoroutine(FindAndCloneMerchant("MultiSceneCore/Level_GroundZero_1",
-                    clone => _savedZeroMerchant = clone));
-            if (context.sceneName == "Level_Farm_Main" && _savedFarmMerchant == null)
-                StartCoroutine(FindAndCloneMerchant("MultiSceneCore/Level_Farm_01/",
-                    clone => _savedFarmMerchant = clone));
-            else if (context.sceneName == "Base")
-            {
-                StartCoroutine(AttachMerchantToBase(_savedZeroMerchant, new Vector3(7, 0, -51),
-                    new Vector3(7, 0, -54)));
-                StartCoroutine(AttachMerchantToBase(_savedFarmMerchant, new Vector3(8, 0, -51),
-                    new Vector3(8, 0, -54)));
-                StartCoroutine(AttachBlueMerchantToBase(_savedBlueMerchantModel, _savedBlueMerchantShop,
-                    new Vector3(6, 0, -51),
-                    new Vector3(6, 0, -54)));
-            }
-        }
-
-        void OnStartedLoadingScene(SceneLoadingContext context)
-        {
-            Debug.Log($"开始加载场景: {context.sceneName}");
-            if (context.sceneName != "Base")
-            {
-                _savedZeroMerchant?.SetActive(false);
-                _savedFarmMerchant?.SetActive(false);
-            }
-        }
-
-        IEnumerator FindAndCloneMerchant(string rootPath, Action<GameObject> onCloned)
-        {
-            Debug.Log("延迟5秒等待场景生成...");
-            yield return new WaitForSeconds(5f);
-
-            var root = GameObject.Find(rootPath);
-            if (root == null)
-            {
-                Debug.LogWarning($"未找到根节点 {rootPath}，打印所有根节点:");
-                // foreach (var go in SceneManager.GetActiveScene().GetRootGameObjects())
-                // {
-                //     Debug.Log("Root: " + go.name);
-                // }
-
-                yield break;
-            }
-
-            // Debug.Log("找到根节点: " + root.name);
-
-            foreach (Transform child in root.transform)
-            {
-                // Debug.Log("遍历子对象: " + child.name);
-                if (child.name == "Character(Clone)")
-                {
-                    var ctrl = child.GetComponent<CharacterMainControl>();
-                    if (ctrl != null)
-                    {
-                        Debug.Log($"CharacterMainControl.Team = {ctrl.Team}");
-                    }
-
-                    if (ctrl != null && ctrl.Team == Teams.all && HasSpecialMerchantChild(child))
-                    {
-                        Debug.Log($"✅ 找到商人: {child.name} @ {child.position}");
-
-                        var clone = Instantiate(child.gameObject);
-                        clone.name = "黑市商人的兄弟";
-                        clone.transform.SetParent(null, true);
-                        clone.SetActive(false);
-
-                        // 禁用 AIController_Merchant_Myst(Clone)
-                        var aiChild = clone.transform.Find("AIController_Merchant_Myst(Clone)");
-                        if (aiChild != null)
-                        {
-                            aiChild.gameObject.SetActive(false);
-                            Debug.Log("✅ 已禁用 AIController_Merchant_Myst(Clone)");
-                        }
-                        else
-                        {
-                            Debug.LogWarning("❌ 未找到 AIController_Merchant_Myst(Clone)");
-                        }
-
-                        DontDestroyOnLoad(clone);
-                        Debug.Log("✅ 已克隆并保存商人对象（DontDestroyOnLoad生效）");
-                        LevelManager.Instance.MainCharacter.PopText("本地图黑市商人的兄弟已被请回基地");
-                        onCloned?.Invoke(clone);
-                        yield break;
-                    }
-                }
-            }
-
-            Debug.LogWarning("❌ 没有找到符合条件的商人对象");
         }
 
 
@@ -240,84 +159,16 @@ namespace MoveBlackMarket
             return null;
         }
 
-        IEnumerator AttachMerchantToBase(GameObject? savedMerchant, Vector3 position, Vector3 faceTo,
-            float waitfor = 2f)
+        void RefreshShop(CharacterMainControl character)
         {
-            yield return new WaitForSeconds(waitfor);
-
-            if (savedMerchant == null)
-            {
-                Debug.LogWarning("❌ 没有保存的商人对象");
-                yield break;
-            }
-
-            var cloneMerchant = Instantiate(savedMerchant);
-
-            var baseRoot = GameObject.Find("MultiSceneCore/Base");
-            if (baseRoot == null)
-            {
-                Debug.LogWarning("❌ 未找到 Base 根节点");
-                yield break;
-            }
-
-            cloneMerchant.transform.SetParent(baseRoot.transform, true);
-            cloneMerchant.transform.position = position;
-
-            // 设置商人朝向
-            var modelRoot = cloneMerchant.transform.Find("ModelRoot");
-            if (modelRoot != null)
-            {
-                modelRoot.LookAt(faceTo);
-                Debug.Log($"✅ 商人朝向已设置: {faceTo}");
-            }
-
-            // 直接监听 DamageReceiver 的 OnDeadEvent
-            var damageReceiver = cloneMerchant.GetComponentInChildren<DamageReceiver>();
-            if (damageReceiver != null)
-            {
-                damageReceiver.OnDeadEvent.AddListener((damageInfo) =>
-                {
-                    Debug.Log($"🔄 商人死亡，准备复活: {cloneMerchant.name}");
-                    // 延迟复活
-                    StartCoroutine(RespawnMerchantAfterDeath(savedMerchant, position, faceTo, 1f));
-                });
-                Debug.Log("✅ 已绑定商人死亡监听事件");
-            }
-            else
-            {
-                Debug.LogWarning("❌ 未找到 DamageReceiver 组件");
-            }
-
-
-            cloneMerchant.SetActive(true);
-            Debug.Log($"✅ 商人已激活");
             // 刷新商店物品
-            var find = GetSpecialMerchantChild(cloneMerchant.transform);
+            var find = GetSpecialMerchantChild(character.transform);
             if (find != null)
             {
                 var stockShop = find.GetComponent<StockShop>();
                 if (stockShop != null)
                 {
-                    Debug.Log($"🔍 尝试刷新商人商店库存...");
-                    // // 使用反射调用 InitializeEntries 方法
-                    // var initializeEntriesMethod = typeof(StockShop).GetMethod("InitializeEntries",
-                    //     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    // if (initializeEntriesMethod != null)
-                    // {
-                    //     try
-                    //     {
-                    //         initializeEntriesMethod.Invoke(stockShop, null);
-                    //         Debug.Log($"✅ 成功调用 InitializeEntries 方法，商店库存已刷新");
-                    //     }
-                    //     catch (Exception ex)
-                    //     {
-                    //         Debug.LogError($"❌ 调用 InitializeEntries 方法时发生异常: {ex.Message}");
-                    //     }
-                    // }
-                    // else
-                    // {
-                    //     Debug.LogWarning("⚠️ 未找到 InitializeEntries 方法");
-                    // }
+                    // Debug.Log($"🔍 尝试刷新商人商店库存...");
 
                     // 使用反射调用 DoRefreshStock 方法
                     var refreshMethod = typeof(StockShop).GetMethod("DoRefreshStock",
@@ -327,7 +178,7 @@ namespace MoveBlackMarket
                         try
                         {
                             refreshMethod.Invoke(stockShop, null);
-                            Debug.Log($"✅ 成功调用 DoRefreshStock 方法，商店库存已刷新");
+                            // Debug.Log($"✅ 成功调用 DoRefreshStock 方法，商店库存已刷新");
                         }
                         catch (Exception ex)
                         {
@@ -347,7 +198,7 @@ namespace MoveBlackMarket
                         try
                         {
                             lastTimeField.SetValue(stockShop, DateTime.UtcNow.ToBinary());
-                            Debug.Log($"✅ 成功更新 lastTimeRefreshedStock 时间戳");
+                            // Debug.Log($"✅ 成功更新 lastTimeRefreshedStock 时间戳");
                         }
                         catch (Exception ex)
                         {
@@ -370,14 +221,71 @@ namespace MoveBlackMarket
             }
         }
 
-        // 商人复活协程
-        IEnumerator RespawnMerchantAfterDeath(GameObject savedMerchant, Vector3 position, Vector3 faceTo,
-            float delaySeconds)
+        CharacterRandomPreset? GetCharacterPreset(string characterPresetName)
         {
-            Debug.Log($"⏳ 等待 {delaySeconds} 秒后复活商人...");
-            yield return new WaitForSeconds(delaySeconds);
+            // Debug.Log($"要找的NPC预设:{characterPresetName}");
+            foreach (var characterRandomPreset in GameplayDataSettings.CharacterRandomPresetData.presets)
+            {
+                // Debug.Log($"{characterRandomPreset.name}:{characterRandomPreset.DisplayName}");
+                if (characterPresetName == characterRandomPreset.name)
+                {
+                    return characterRandomPreset;
+                }
+            }
 
-            StartCoroutine(AttachMerchantToBase(savedMerchant, position, faceTo, 0f));
+            return null;
+        }
+
+
+        async void CreateCharacter(string characterPresetName, Vector3 position, Vector3 faceTo)
+        {
+            // AICharacterController,AISpecialAttachment_Shop,StockShop,Health
+            var characterRandomPreset = GetCharacterPreset(characterPresetName);
+            if (characterRandomPreset == null)
+            {
+                return;
+            }
+
+            // 创建角色
+            var character = await characterRandomPreset.CreateCharacterAsync(position, faceTo,
+                MultiSceneCore.MainScene.Value.buildIndex, (CharacterSpawnerGroup)null, false);
+            if (character != null)
+            {
+                // 禁用AI反击
+                var aiChild = character.transform.Find("AIController_Merchant_Myst(Clone)");
+                if (aiChild != null)
+                {
+                    var aiCharacterController = aiChild.GetComponent<AICharacterController>();
+                    if (aiCharacterController != null)
+                    {
+                        // aiCharacterController.alertTree = null;
+                        aiCharacterController.combat_Attack_Tree = null;
+                        aiCharacterController.combatTree = null;
+                        aiCharacterController.patrolTree = null;
+                        // Debug.Log("AI反击已禁用");
+                    }
+                }
+
+                // 绑定受伤事件
+                var health = character.GetComponent<Health>();
+                if (health != null)
+                {
+                    void OnMerchantHurtEvent(DamageInfo damageInfo)
+                    {
+                        RefreshShop(character);
+                        NotificationText.Push($"商店已刷新");
+                    }
+
+                    health.OnHurtEvent.AddListener(OnMerchantHurtEvent);
+                }
+
+
+                var baseRoot = GameObject.Find("MultiSceneCore/Base");
+                if (baseRoot != null)
+                {
+                    character.transform.SetParent(baseRoot.transform, true);
+                }
+            }
         }
 
         IEnumerator AttachBlueMerchantToBase(GameObject? model, GameObject? shop, Vector3 position, Vector3 faceTo,
@@ -387,13 +295,13 @@ namespace MoveBlackMarket
 
             if (model == null)
             {
-                Debug.LogWarning("❌ 没有保存的地毯人模型");
+                // Debug.LogWarning("❌ 没有保存的地毯人模型");
                 yield break;
             }
 
             if (shop == null)
             {
-                Debug.LogWarning("❌ 没有保存的地毯人商店");
+                // Debug.LogWarning("❌ 没有保存的地毯人商店");
                 yield break;
             }
 
@@ -417,55 +325,17 @@ namespace MoveBlackMarket
             if (modelRoot != null)
             {
                 modelRoot.LookAt(faceTo);
-                Debug.Log($"✅ 地毯人朝向已设置: {faceTo}");
+                // Debug.Log($"✅ 地毯人朝向已设置: {faceTo}");
             }
-
-            // 直接监听 DamageReceiver 的 OnDeadEvent
-            var damageReceiver = cloneModel.GetComponentInChildren<DamageReceiver>();
-            if (damageReceiver != null)
-            {
-                damageReceiver.OnDeadEvent.AddListener((damageInfo) =>
-                {
-                    Debug.Log($"🔄 商人死亡，准备复活: {cloneModel.name}");
-                    // 延迟复活
-                    StartCoroutine(RespawnBlueMerchantAfterDeath(model, shop, position, faceTo, 1f));
-                });
-                Debug.Log("✅ 已绑定商人死亡监听事件");
-            }
-            else
-            {
-                Debug.LogWarning("❌ 未找到 DamageReceiver 组件");
-            }
-
 
             cloneModel.SetActive(true);
             cloneShop.SetActive(true);
-            Debug.Log($"✅ 商人已激活");
+            // Debug.Log($"✅ 商人已激活");
             // 刷新商店物品
             var stockShop = cloneShop.GetComponent<StockShop>();
             if (stockShop != null)
             {
-                Debug.Log($"🔍 尝试刷新商人商店库存...");
-                // // 使用反射调用 InitializeEntries 方法
-                // var initializeEntriesMethod = typeof(StockShop).GetMethod("InitializeEntries",
-                //     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                // if (initializeEntriesMethod != null)
-                // {
-                //     try
-                //     {
-                //         initializeEntriesMethod.Invoke(stockShop, null);
-                //         Debug.Log($"✅ 成功调用 InitializeEntries 方法，商店库存已刷新");
-                //     }
-                //     catch (Exception ex)
-                //     {
-                //         Debug.LogError($"❌ 调用 InitializeEntries 方法时发生异常: {ex.Message}");
-                //     }
-                // }
-                // else
-                // {
-                //     Debug.LogWarning("⚠️ 未找到 InitializeEntries 方法");
-                // }
-
+                // Debug.Log($"🔍 尝试刷新商人商店库存...");
                 // 使用反射调用 DoRefreshStock 方法
                 var refreshMethod = typeof(StockShop).GetMethod("DoRefreshStock",
                     BindingFlags.NonPublic | BindingFlags.Instance);
@@ -474,7 +344,7 @@ namespace MoveBlackMarket
                     try
                     {
                         refreshMethod.Invoke(stockShop, null);
-                        Debug.Log($"✅ 成功调用 DoRefreshStock 方法，商店库存已刷新");
+                        // Debug.Log($"✅ 成功调用 DoRefreshStock 方法，商店库存已刷新");
                     }
                     catch (Exception ex)
                     {
@@ -494,7 +364,7 @@ namespace MoveBlackMarket
                     try
                     {
                         lastTimeField.SetValue(stockShop, DateTime.UtcNow.ToBinary());
-                        Debug.Log($"✅ 成功更新 lastTimeRefreshedStock 时间戳");
+                        // Debug.Log($"✅ 成功更新 lastTimeRefreshedStock 时间戳");
                     }
                     catch (Exception ex)
                     {
@@ -510,16 +380,6 @@ namespace MoveBlackMarket
             {
                 Debug.LogWarning("⚠️ SpecialAttachment_Merchant_ 上未找到 StockShop 组件");
             }
-        }
-
-        // 地毯人复活协程
-        IEnumerator RespawnBlueMerchantAfterDeath(GameObject model, GameObject shop, Vector3 position, Vector3 faceTo,
-            float delaySeconds)
-        {
-            Debug.Log($"⏳ 等待 {delaySeconds} 秒后复活地毯人...");
-            yield return new WaitForSeconds(delaySeconds);
-
-            StartCoroutine(AttachBlueMerchantToBase(model, shop, position, faceTo, 0f));
         }
     }
 }
