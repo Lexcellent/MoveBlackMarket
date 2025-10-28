@@ -22,6 +22,8 @@ namespace MoveBlackMarket
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneLoaded += OnSceneLoaded;
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
+            SceneManager.sceneUnloaded += OnSceneUnloaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInit;
             SceneLoader.onAfterSceneInitialize += OnAfterSceneInit;
         }
@@ -29,6 +31,7 @@ namespace MoveBlackMarket
         protected override void OnBeforeDeactivate()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInit;
         }
 
@@ -41,8 +44,19 @@ namespace MoveBlackMarket
                 CreateCharacter("EnemyPreset_Merchant_Myst", new Vector3(7, 0, -51), new Vector3(7, 0, -54));
                 CreateCharacter("EnemyPreset_Merchant_Myst0", new Vector3(8, 0, -51), new Vector3(8, 0, -54));
                 await AttachBlueMerchantToBase(_savedBlueMerchantModel, _savedBlueMerchantShop,
-                    new Vector3(6, 0, -51),
-                    new Vector3(6, 0, -54));
+                    new Vector3(9.5f, 1.5f, -51.5f),
+                    new Vector3(9.5f, 1.5f, -54));
+            }
+        }
+
+        async void OnSceneUnloaded(Scene scene)
+        {
+            if (scene.name == "Base_SceneV2")
+            {
+                Destroy(_tempBlueMerchantModel);
+                _tempBlueMerchantModel = null;
+                Destroy(_tempBlueMerchantShop);
+                _tempBlueMerchantShop = null;
             }
         }
 
@@ -362,7 +376,7 @@ namespace MoveBlackMarket
         }
 
         async Task AttachBlueMerchantToBase(GameObject? model, GameObject? shop, Vector3 position, Vector3 faceTo,
-            float waitfor = 0f)
+            float waitfor = 1f)
         {
             await Task.Delay(TimeSpan.FromSeconds(waitfor));
             if (model == null)
@@ -395,7 +409,8 @@ namespace MoveBlackMarket
             _tempBlueMerchantModel.transform.SetParent(baseRoot.transform, true);
             _tempBlueMerchantShop.transform.SetParent(baseRoot.transform, true);
             _tempBlueMerchantModel.transform.position = position;
-            _tempBlueMerchantShop.transform.position = new Vector3(position.x + 0.3f, position.y + 0.4f, position.z);
+            // _tempBlueMerchantShop.transform.position = new Vector3(position.x + 0.3f, position.y + 0.4f, position.z);
+            _tempBlueMerchantShop.transform.position = new Vector3(position.x + 0.3f, 0f, position.z);
 
             // 设置地摊人朝向
             _tempBlueMerchantModel.transform.LookAt(faceTo);
