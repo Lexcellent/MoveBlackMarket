@@ -1,11 +1,10 @@
-﻿using Duckov.Economy;
+﻿using System;
+using System.Reflection;
+using System.Threading.Tasks;
+using Duckov.Economy;
 using Duckov.Scenes;
 using Duckov.UI;
 using Duckov.Utilities;
-using System;
-using System.Collections;
-using System.Reflection;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -73,7 +72,7 @@ namespace MoveBlackMarket
 
             return tcs.Task;
         }
-        public static void DisableScene(Scene scene)
+        private static void DisableScene(Scene scene)
         {
             GameObject[] rootObjects = scene.GetRootGameObjects();
             foreach (GameObject root in rootObjects)
@@ -81,7 +80,7 @@ namespace MoveBlackMarket
                 root.SetActive(false);
             }
         }
-        private static GameObject FindRootObjectInScene(Scene scene, string rootName)
+        private static GameObject? FindRootObjectInScene(Scene scene, string rootName)
         {
             GameObject[] rootObjects = scene.GetRootGameObjects();
             foreach (GameObject root in rootObjects)
@@ -91,7 +90,7 @@ namespace MoveBlackMarket
             }
             return null;
         }
-        public static async Task SceneFindObject(string sourceSceneName, LoadSceneMode loadSceneMode, Func<Scene, Task> func)
+        private static async Task SceneFindObject(string sourceSceneName, LoadSceneMode loadSceneMode, Func<Scene, Task> func)
         {
             Scene sourceScene = SceneManager.GetSceneByName(sourceSceneName);
             bool sceneWasAlreadyLoaded = sourceScene.IsValid() && sourceScene.isLoaded;
@@ -99,6 +98,11 @@ namespace MoveBlackMarket
             {
                 // 场景未加载，异步加载场景
                 AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sourceSceneName, loadSceneMode);
+                if (asyncLoad == null)
+                {
+                    Debug.LogError($"无法加载场景: {sourceSceneName}");
+                    return;
+                }
                 asyncLoad.allowSceneActivation = true;
                 await AsTask(asyncLoad);
                 // 重新获取场景引用
@@ -115,10 +119,15 @@ namespace MoveBlackMarket
             {
                 //yield return new WaitForEndOfFrame(); // 确保复制完成
                 AsyncOperation asyncUnload = SceneManager.UnloadSceneAsync(sourceSceneName);
+                if (asyncUnload == null)
+                {
+                    Debug.LogError($"无法卸载场景: {sourceSceneName}");
+                    return;
+                }
                 await AsTask(asyncUnload);
             }
         }
-        public static GameObject FindByPathInScene(Scene scene, string hierarchyPathOrName)
+        public static GameObject? FindByPathInScene(Scene scene, string hierarchyPathOrName)
         {
             // 路径格式示例: "Canvas/Panel/Button" 或 "RootObject/Child/GrandChild"
             string[] pathParts = hierarchyPathOrName.Split('/');
@@ -146,7 +155,7 @@ namespace MoveBlackMarket
             }
             return current.gameObject;
         }
-        public static GameObject CloneObject(GameObject obj, string name)
+        public static GameObject? CloneObject(GameObject obj, string name)
         {
             if (obj == null)
                 return null;
